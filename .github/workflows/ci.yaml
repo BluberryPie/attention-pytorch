@@ -12,4 +12,16 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
-      - run: ls -al
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          enable-cache: true
+          version: "latest"
+      - name: Install dependencies
+        run: uv sync
+      - name: Run tests
+        run: uv run pytest
+      - name: Lint with ruff
+        run: uv run ruff check
+      - name: Check formatting with ruff
+        run: uv run ruff format --check
