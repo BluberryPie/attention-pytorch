@@ -22,4 +22,4 @@ class Vocab:
         counter: Counter = Counter(chain.from_iterable(tokenized_data))
         most_common_tokens: list = counter.most_common(max_size - len(SPECIAL_TOKENS))
         itos = SPECIAL_TOKENS + [token for token, _ in most_common_tokens]
-        return cls(itos)        
+        return cls(itos)
