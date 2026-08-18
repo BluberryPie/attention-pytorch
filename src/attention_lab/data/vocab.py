@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections import Counter
 from itertools import chain
 
-
 PAD = "<PAD>"
 UNK = "<UNK>"
 SOS = "<SOS>"
