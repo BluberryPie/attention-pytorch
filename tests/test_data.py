@@ -1,4 +1,5 @@
 import itertools
+import json
 
 import pytest
 
@@ -140,3 +141,20 @@ def test_vocab_decode_raises_on_out_of_range_id():
     ids = [4, 5, 6, 9]  # id=9 doesn't exist
     with pytest.raises(IndexError):
         vocab.decode(ids)
+
+
+def test_vocab_save_writes_itos_to_file(tmp_path):
+    itos: list[str] = SPECIAL_TOKENS + ["I", "have", "a", "dream", "."]
+    vocab = Vocab(itos)
+    file_path = tmp_path / "test.json"
+    vocab.save(path=file_path)
+    itos_loaded = json.loads(file_path.read_text(encoding="utf-8"))
+    assert itos == itos_loaded
+
+
+def test_vocab_load_reconstructs_vocab_from_file(tmp_path):
+    itos: list[str] = SPECIAL_TOKENS + ["I", "have", "a", "dream", "."]
+    file_path = tmp_path / "test.json"
+    file_path.write_text(json.dumps(itos))
+    vocab = Vocab.load(file_path)
+    assert itos == vocab.itos
