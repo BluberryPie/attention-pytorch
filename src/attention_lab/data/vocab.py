@@ -22,3 +22,9 @@ class Vocab:
         most_common_tokens: list = counter.most_common(max_size - len(SPECIAL_TOKENS))
         itos = SPECIAL_TOKENS + [token for token, _ in most_common_tokens]
         return cls(itos)
+
+    def encode(self, tokens: list[str]) -> list[int]:
+        return [self.stoi.get(token, self.stoi[UNK]) for token in tokens]
+
+    def decode(self, ids: list[int]) -> list[str]:
+        return [self.itos[_id] for _id in ids]

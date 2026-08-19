@@ -3,7 +3,7 @@ import itertools
 import pytest
 
 from attention_lab.data.tokenize import tokenize
-from attention_lab.data.vocab import EOS, PAD, SOS, UNK, Vocab
+from attention_lab.data.vocab import EOS, PAD, SOS, SPECIAL_TOKENS, UNK, Vocab
 
 
 @pytest.mark.parametrize(
@@ -97,3 +97,46 @@ def test_vocab_build_deduplicates_across_sublists():
     # Vocab size should be 9 (4 special tokens + 5 from input)
     vocab = Vocab.build(tokenized_data)
     assert len(vocab.itos) == 9
+
+
+def test_vocab_encode_maps_known_tokens_to_ids():
+    itos: list[str] = SPECIAL_TOKENS + ["I", "have", "a", "dream", "."]
+    vocab = Vocab(itos)
+    # "I": 4, "have": 5, "a": 6, "dream": 7, ".": 8
+    tokens = ["a", "dream", "have", "I", "."]
+    ids = vocab.encode(tokens)
+    assert ids == [6, 7, 5, 4, 8]
+
+
+def test_vocab_encode_maps_unknown_tokens_to_unk():
+    itos: list[str] = SPECIAL_TOKENS + ["I", "have", "a", "dream", "."]
+    vocab = Vocab(itos)
+    # "I": 4, "have": 5, "a": 6, "dream": 7, ".": 8
+    tokens = ["Cats", "have", "dreams", "."]
+    ids = vocab.encode(tokens)
+    unk = vocab.stoi[UNK]
+    assert ids == [unk, 5, unk, 8]
+
+
+def test_vocab_decode_maps_ids_to_tokens():
+    itos: list[str] = SPECIAL_TOKENS + ["I", "have", "a", "dream", "."]
+    vocab = Vocab(itos)
+    # "I": 4, "have": 5, "a": 6, "dream": 7, ".": 8
+    pad, unk, sos, eos = (
+        vocab.stoi[PAD],
+        vocab.stoi[UNK],
+        vocab.stoi[SOS],
+        vocab.stoi[EOS],
+    )
+    ids = [sos, unk, 5, unk, 8, pad, pad, eos]
+    tokens = vocab.decode(ids)
+    assert tokens == [SOS, UNK, "have", UNK, ".", PAD, PAD, EOS]
+
+
+def test_vocab_decode_raises_on_out_of_range_id():
+    itos: list[str] = SPECIAL_TOKENS + ["I", "have", "a", "dream", "."]
+    vocab = Vocab(itos)
+    # "I": 4, "have": 5, "a": 6, "dream": 7, ".": 8
+    ids = [4, 5, 6, 9]  # id=9 doesn't exist
+    with pytest.raises(IndexError):
+        vocab.decode(ids)
