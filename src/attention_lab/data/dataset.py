@@ -1,3 +1,6 @@
+from collections.abc import Callable
+
+import torch
 from datasets import Dataset as HFDataset
 from torch.utils.data import Dataset
 
@@ -25,3 +28,21 @@ class GigawordDataset(Dataset):
             + [self.vocab.stoi[EOS]]
         )
         return source_ids, target_ids
+
+
+def _pad_batch(ids_list: list[list[int]], pad_id: int) -> torch.Tensor:
+    ids_tensor = [torch.tensor(ids, dtype=torch.long) for ids in ids_list]
+    ids_tensor_padded = torch.nn.utils.rnn.pad_sequence(
+        ids_tensor, padding_value=pad_id, batch_first=True
+    )
+    return ids_tensor_padded
+
+
+def make_collate_fn(pad_id: int) -> Callable:
+    def collate_fn(
+        batch: list[tuple[list[int], list[int]]],
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        source_ids_list, target_ids_list = map(list, zip(*batch))
+        return _pad_batch(source_ids_list, pad_id), _pad_batch(target_ids_list, pad_id)
+
+    return collate_fn
