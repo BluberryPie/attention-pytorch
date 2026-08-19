@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 from collections import Counter
 from itertools import chain
+from pathlib import Path
 
 PAD = "<PAD>"
 UNK = "<UNK>"
@@ -28,3 +30,13 @@ class Vocab:
 
     def decode(self, ids: list[int]) -> list[str]:
         return [self.itos[_id] for _id in ids]
+
+    def save(self, path: Path) -> None:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(self.itos, f, indent=4)
+
+    @classmethod
+    def load(cls, path: Path) -> Vocab:
+        with open(path, "r", encoding="utf-8") as f:
+            itos = json.load(f)
+        return cls(itos)
