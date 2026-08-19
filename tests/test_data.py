@@ -2,7 +2,9 @@ import itertools
 import json
 
 import pytest
+from datasets import Dataset as HFDataset
 
+from attention_lab.data.dataset import GigawordDataset
 from attention_lab.data.tokenize import tokenize
 from attention_lab.data.vocab import EOS, PAD, SOS, SPECIAL_TOKENS, UNK, Vocab
 
@@ -158,3 +160,53 @@ def test_vocab_load_reconstructs_vocab_from_file(tmp_path):
     file_path.write_text(json.dumps(itos))
     vocab = Vocab.load(file_path)
     assert itos == vocab.itos
+
+
+def test_gigaword_dataset_len_matches_row_count():
+    data: HFDataset = HFDataset.from_dict(
+        {"article": ["A", "B", "C"], "summary": ["X", "Y", "Z"]}
+    )
+    vocab = Vocab(SPECIAL_TOKENS + ["A", "B", "C", "X", "Y", "Z"])
+    dataset = GigawordDataset(data, vocab)
+    assert len(dataset) == 3
+
+
+@pytest.fixture
+def sample_data() -> HFDataset:
+    return HFDataset.from_dict(
+        {
+            "article": ["the cat sat on the old mat quitely"],
+            "summary": ["cat sat quitely"],
+        }
+    )
+
+
+@pytest.fixture
+def sample_vocab() -> Vocab:
+    return Vocab(SPECIAL_TOKENS + ["the", "cat", "sat", "on", "old", "mat", "quitely"])
+
+
+def test_gigaword_dataset_getitem_encodes_source(sample_data, sample_vocab):
+    dataset = GigawordDataset(data=sample_data, vocab=sample_vocab)
+    source_ids, _ = dataset[0]
+    # the: 4 / cat: 5 / sat: 6 / on: 7 / old: 8 / mat: 9 / quitely: 10
+    # the cat sat on the old mat quitely => [4, 5, 6, 7, 4, 8, 9, 10]
+    assert source_ids == [4, 5, 6, 7, 4, 8, 9, 10]
+
+
+def test_gigaword_dataset_getitem_truncates_source(sample_data, sample_vocab):
+    max_source_len = 4
+    dataset = GigawordDataset(
+        data=sample_data, vocab=sample_vocab, max_source_len=max_source_len
+    )
+    source_ids, _ = dataset[0]
+    assert source_ids == [4, 5, 6, 7]
+
+
+def test_gigaword_dataset_getitem_wraps_target_with_sos_eos(sample_data, sample_vocab):
+    dataset = GigawordDataset(data=sample_data, vocab=sample_vocab)
+    _, target_ids = dataset[0]
+    # the: 4 / cat: 5 / sat: 6 / on: 7 / old: 8 / mat: 9 / quitely: 10
+    # cat sat quitely => [5, 6, 10]
+    sos_id, eos_id = sample_vocab.stoi[SOS], sample_vocab.stoi[EOS]
+    assert target_ids == [sos_id] + [5, 6, 10] + [eos_id]
