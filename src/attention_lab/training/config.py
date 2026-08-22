@@ -9,6 +9,8 @@ import yaml
 @dataclass
 class TrainConfig:
     variant: str = "bahdanau"
+    vocab_path: str = "vocab"
+    checkpoint_path: str = "checkpoints/bahdanau"
     embedding_dim: int = 256
     hidden_dim: int = 512
     attention_dim: int = 512
