@@ -5,13 +5,20 @@ import sys
 from pathlib import Path
 
 import datasets
+import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader
 
+from attention_lab.attention.bahdanau import BahdanauAttention
 from attention_lab.data.dataset import GigawordDataset, make_collate_fn
 from attention_lab.data.gigaword import load_gigaword
 from attention_lab.data.tokenize import tokenize
 from attention_lab.data.vocab import PAD, Vocab
+from attention_lab.models.bahdanau.decoder import BahdanauDecoder
+from attention_lab.models.bahdanau.encoder import BiGRUEncoder
+from attention_lab.models.seq2seq import Seq2Seq
 from attention_lab.training.config import TrainConfig
+from attention_lab.training.loop import evaluate, train_epoch
 
 
 def main():
@@ -72,13 +79,64 @@ def main():
         val_dataset, batch_size=64, collate_fn=make_collate_fn(pad_id=vocab.stoi[PAD])
     )
 
-    # (TODO) 5. Construct the model(encoder, decoder, seq2seq) based on config.variant
+    # 5. Construct the model(encoder, decoder, seq2seq) based on config.variant
+    if train_config.variant == "bahdanau":
+        encoder = BiGRUEncoder(
+            vocab_size=vocab.size,
+            embed_dim=train_config.embedding_dim,
+            hidden_dim=train_config.hidden_dim,
+            pad_id=vocab.stoi[PAD],
+        )
+        attention = BahdanauAttention(
+            hidden_dim=train_config.hidden_dim, attn_dim=train_config.attention_dim
+        )
+        decoder = BahdanauDecoder(
+            vocab_size=vocab.size,
+            embed_dim=train_config.embedding_dim,
+            hidden_dim=train_config.hidden_dim,
+            attention=attention,
+            pad_id=vocab.stoi[PAD],
+        )
+        seq2seq = Seq2Seq(encoder, decoder)
+    else:
+        logger.error(f"Unsupported variant: '{train_config.variant}'")
+        sys.exit(1)
 
-    # (TODO) 6. Construct the optimizer and criterion
+    # 6. Pick a device and move the model to it
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
+    seq2seq = seq2seq.to(device)
 
-    # (TODO) 7. Pick a device
+    # 7. Construct the optimizer and criterion
+    optimizer = torch.optim.Adam(seq2seq.parameters(), lr=train_config.learning_rate)
+    criterion = nn.CrossEntropyLoss(ignore_index=vocab.stoi[PAD])
 
-    # (TODO) 8. Run the training loop over config.num_epochs
+    # 8. Run the training loop over config.num_epochs
+    Path(train_config.checkpoint_path).mkdir(parents=True, exist_ok=True)
+    for epoch in range(train_config.num_epochs):
+        train_loss: float = train_epoch(
+            model=seq2seq,
+            dataloader=train_loader,
+            optimizer=optimizer,
+            criterion=criterion,
+            teacher_forcing_ratio=train_config.teacher_forcing_ratio,
+            clip_norm=train_config.gradient_clip_norm,
+            device=device,
+        )
+        eval_loss: float = evaluate(
+            model=seq2seq, dataloader=val_loader, criterion=criterion, device=device
+        )
+        # Checkpoint for every epoch
+        checkpoint: dict = {
+            "model": seq2seq.state_dict(),
+            "train_loss": train_loss,
+            "eval_loss": eval_loss,
+        }
+        torch.save(checkpoint, Path(train_config.checkpoint_path) / f"epoch_{epoch}.pt")
 
 
 if __name__ == "__main__":
