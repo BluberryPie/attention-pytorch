@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections import Counter
+from collections.abc import Iterable
 from itertools import chain
 from pathlib import Path
 
@@ -19,7 +20,7 @@ class Vocab:
         self.stoi: dict[str, int] = {s: i for i, s in enumerate(itos)}
 
     @classmethod
-    def build(cls, tokenized_data: list[list[str]], max_size: int = 50_000) -> Vocab:
+    def build(cls, tokenized_data: Iterable[list[str]], max_size: int = 50_000) -> Vocab:
         counter: Counter = Counter(chain.from_iterable(tokenized_data))
         most_common_tokens: list = counter.most_common(max_size - len(SPECIAL_TOKENS))
         itos = SPECIAL_TOKENS + [token for token, _ in most_common_tokens]
