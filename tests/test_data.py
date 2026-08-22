@@ -162,6 +162,12 @@ def test_vocab_load_reconstructs_vocab_from_file(tmp_path):
     assert itos == vocab.itos
 
 
+def test_vocab_size_returns_number_of_tokens():
+    itos: list[str] = SPECIAL_TOKENS + ["I", "have", "a", "dream", "."]
+    vocab = Vocab(itos)
+    assert vocab.size == len(itos)
+
+
 def test_gigaword_dataset_len_matches_row_count():
     data: HFDataset = HFDataset.from_dict(
         {"article": ["A", "B", "C"], "summary": ["X", "Y", "Z"]}

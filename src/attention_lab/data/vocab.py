@@ -19,6 +19,10 @@ class Vocab:
         self.itos: list[str] = itos
         self.stoi: dict[str, int] = {s: i for i, s in enumerate(itos)}
 
+    @property
+    def size(self) -> int:
+        return len(self.itos)
+
     @classmethod
     def build(
         cls, tokenized_data: Iterable[list[str]], max_size: int = 50_000
