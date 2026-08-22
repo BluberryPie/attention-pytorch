@@ -52,3 +52,34 @@ def train_epoch(
         optimizer.step()
 
     return (total_loss / len(dataloader)).item()
+
+
+@torch.no_grad()
+def evaluate(
+    model: Seq2Seq, dataloader: DataLoader, criterion: nn.Module, device: torch.device
+) -> float:
+    """Evaluate the seq2seq model over one full pass
+
+    Args:
+        model:
+        dataloader:
+        criterion:
+        device:
+
+    Returns:
+        The average loss over one full pass of the given dataloader
+    """
+    model.eval()
+    total_loss: torch.Tensor = torch.tensor(
+        data=0.0, device=device
+    )  # Accumulates running loss
+    for source_ids, target_ids in dataloader:
+        source_ids = source_ids.to(device)
+        target_ids = target_ids.to(device)
+        logits, _ = model(source_ids, target_ids, teacher_forcing_ratio=0.0)
+        logits = logits.permute(0, 2, 1)
+        loss = criterion(logits, target_ids[:, 1:])
+        total_loss += loss
+
+    model.train()
+    return (total_loss / len(dataloader)).item()
