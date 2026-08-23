@@ -10,13 +10,11 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from attention_lab.attention.bahdanau import BahdanauAttention
 from attention_lab.data.dataset import GigawordDataset, make_collate_fn
 from attention_lab.data.gigaword import load_gigaword
 from attention_lab.data.tokenize import tokenize
 from attention_lab.data.vocab import PAD, Vocab
-from attention_lab.models.bahdanau.decoder import BahdanauDecoder
-from attention_lab.models.bahdanau.encoder import BiGRUEncoder
+from attention_lab.models import build_model
 from attention_lab.models.seq2seq import Seq2Seq
 from attention_lab.training.config import TrainConfig
 from attention_lab.training.loop import evaluate, train_epoch
@@ -70,26 +68,10 @@ def main():
     )
 
     # 5. Construct the model(encoder, decoder, seq2seq) based on config.variant
-    if train_config.variant == "bahdanau":
-        encoder = BiGRUEncoder(
-            vocab_size=vocab.size,
-            embed_dim=train_config.embedding_dim,
-            hidden_dim=train_config.hidden_dim,
-            pad_id=vocab.stoi[PAD],
-        )
-        attention = BahdanauAttention(
-            hidden_dim=train_config.hidden_dim, attn_dim=train_config.attention_dim
-        )
-        decoder = BahdanauDecoder(
-            vocab_size=vocab.size,
-            embed_dim=train_config.embedding_dim,
-            hidden_dim=train_config.hidden_dim,
-            attention=attention,
-            pad_id=vocab.stoi[PAD],
-        )
-        seq2seq = Seq2Seq(encoder, decoder)
-    else:
-        logger.error(f"Unsupported variant: '{train_config.variant}'")
+    try:
+        seq2seq: Seq2Seq = build_model(vocab=vocab, config=train_config)
+    except ValueError as e:
+        logger.error(e)
         sys.exit(1)
 
     # 6. Pick a device and move the model to it
