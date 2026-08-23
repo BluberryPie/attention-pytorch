@@ -8,6 +8,7 @@ import datasets
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from attention_lab.attention.bahdanau import BahdanauAttention
 from attention_lab.data.dataset import GigawordDataset, make_collate_fn
@@ -98,6 +99,7 @@ def main():
         device = torch.device("mps")
     else:
         device = torch.device("cpu")
+    logger.info(f"Device [{device}] available and selected.")
     seq2seq = seq2seq.to(device)
 
     # 7. Construct the optimizer and criterion
@@ -106,7 +108,7 @@ def main():
 
     # 8. Run the training loop over config.num_epochs
     Path(train_config.checkpoint_path).mkdir(parents=True, exist_ok=True)
-    for epoch in range(train_config.num_epochs):
+    for epoch in tqdm(range(train_config.num_epochs), desc="Epochs"):
         # Construct the train dataset and loader
         train_dataset = GigawordDataset(
             data=gigaword_train.shuffle().select(range(train_config.subset_size)),

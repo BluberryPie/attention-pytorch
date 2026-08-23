@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from attention_lab.models.seq2seq import Seq2Seq
 
@@ -33,7 +34,7 @@ def train_epoch(
     total_loss: torch.Tensor = torch.tensor(
         data=0.0, device=device
     )  # Accumulates running loss
-    for source_ids, target_ids in dataloader:
+    for source_ids, target_ids in tqdm(dataloader, desc="Training", leave=False):
         source_ids = source_ids.to(device)
         target_ids = target_ids.to(device)
         logits, _ = model(
@@ -73,7 +74,7 @@ def evaluate(
     total_loss: torch.Tensor = torch.tensor(
         data=0.0, device=device
     )  # Accumulates running loss
-    for source_ids, target_ids in dataloader:
+    for source_ids, target_ids in tqdm(dataloader, desc="Evaluation", leave=False):
         source_ids = source_ids.to(device)
         target_ids = target_ids.to(device)
         logits, _ = model(source_ids, target_ids, teacher_forcing_ratio=0.0)
