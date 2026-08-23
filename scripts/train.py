@@ -140,7 +140,9 @@ def main():
             "train_loss": train_loss,
             "eval_loss": eval_loss,
         }
-        torch.save(checkpoint, Path(train_config.checkpoint_path) / f"epoch_{epoch}.pt")
+        torch.save(
+            checkpoint, Path(train_config.checkpoint_path) / f"epoch_{epoch + 1}.pt"
+        )
 
 
 if __name__ == "__main__":
