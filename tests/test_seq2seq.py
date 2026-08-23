@@ -104,3 +104,61 @@ def test_seq2seq_no_teacher_forcing_uses_own_predictions(
     assert torch.equal(
         recorded_prev_tokens[:, 1:], torch.argmax(all_logits[:, :-1], dim=-1)
     )
+
+
+@pytest.fixture
+def sos_id() -> int:
+    return 3
+
+
+@pytest.fixture
+def max_len() -> int:
+    return 10
+
+
+def test_generate_output_shapes(
+    small_bahdanau_seq2seq, sample_source_ids, sos_id, max_len
+):
+    batch_size: int = sample_source_ids.shape[0]
+    source_len: int = sample_source_ids.shape[1]
+    tokens, weights = small_bahdanau_seq2seq.generate(
+        source_ids=sample_source_ids, sos_id=sos_id, max_len=max_len
+    )
+    assert tokens.shape == (batch_size, max_len)
+    assert weights.shape == (batch_size, max_len, source_len)
+
+
+def test_generate_does_not_track_gradients(
+    small_bahdanau_seq2seq, sample_source_ids, sos_id, max_len
+):
+    tokens, weights = small_bahdanau_seq2seq.generate(
+        source_ids=sample_source_ids, sos_id=sos_id, max_len=max_len
+    )
+    assert tokens.requires_grad is False
+    assert weights.requires_grad is False
+    for param in small_bahdanau_seq2seq.parameters():
+        assert param.grad is None
+
+
+def test_generate_restores_train_mode(
+    small_bahdanau_seq2seq, sample_source_ids, sos_id, max_len
+):
+    _ = small_bahdanau_seq2seq.generate(
+        source_ids=sample_source_ids, sos_id=sos_id, max_len=max_len
+    )
+    assert small_bahdanau_seq2seq.training
+
+
+def test_generate_uses_greedy_decoding(
+    small_bigru_encoder, sample_source_ids, sos_id, max_len
+):
+    fake_decoder = FakeDecoder()
+    seq2seq = Seq2Seq(small_bigru_encoder, fake_decoder)
+    tokens, _ = seq2seq.generate(sample_source_ids, sos_id=sos_id, max_len=max_len)
+    batch_size = sample_source_ids.shape[0]
+    # Initial prev_tokens should be the sos_id filled tensor.
+    assert torch.equal(
+        fake_decoder.prev_tokens[0], torch.full(size=(batch_size,), fill_value=sos_id)
+    )
+    for t in range(max_len - 1):
+        assert torch.equal(tokens[:, t], fake_decoder.prev_tokens[t + 1])
