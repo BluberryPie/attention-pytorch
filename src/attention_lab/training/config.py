@@ -7,7 +7,7 @@ import yaml
 
 
 @dataclass
-class TrainConfig:
+class Config:
     variant: str = "bahdanau"
     vocab_path: str = "vocab"
     checkpoint_path: str = "checkpoints/bahdanau"
@@ -24,5 +24,5 @@ class TrainConfig:
     num_epochs: int = 10
 
     @classmethod
-    def from_yaml(cls, path: Path) -> TrainConfig:
+    def from_yaml(cls, path: Path) -> Config:
         return cls(**yaml.safe_load(path.read_text()))

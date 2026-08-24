@@ -3,10 +3,10 @@ from attention_lab.data.vocab import PAD, Vocab
 from attention_lab.models.bahdanau.decoder import BahdanauDecoder
 from attention_lab.models.bahdanau.encoder import BiGRUEncoder
 from attention_lab.models.seq2seq import Seq2Seq
-from attention_lab.training.config import TrainConfig
+from attention_lab.training.config import Config
 
 
-def build_model(vocab: Vocab, config: TrainConfig) -> Seq2Seq:
+def build_model(vocab: Vocab, config: Config) -> Seq2Seq:
     variant: str = config.variant
     if variant == "bahdanau":
         encoder = BiGRUEncoder(

@@ -2,7 +2,7 @@ import textwrap
 
 import pytest
 
-from attention_lab.training.config import TrainConfig
+from attention_lab.training.config import Config
 
 
 @pytest.mark.parametrize(
@@ -16,9 +16,9 @@ from attention_lab.training.config import TrainConfig
         ("max_source_len", 100),
     ],
 )
-def test_train_config_defaults(field: str, expected: int):
-    train_config = TrainConfig()
-    assert getattr(train_config, field) == expected
+def test_config_defaults(field: str, expected: int):
+    config = Config()
+    assert getattr(config, field) == expected
 
 
 @pytest.mark.parametrize(
@@ -32,7 +32,7 @@ def test_train_config_defaults(field: str, expected: int):
         ("max_source_len", 100),
     ],
 )
-def test_train_config_from_yaml_overrides_defaults(tmp_path, field: str, expected: int):
+def test_config_from_yaml_overrides_defaults(tmp_path, field: str, expected: int):
     yaml_config = """\
     embedding_dim: 999
     attention_dim: 999
@@ -44,5 +44,5 @@ def test_train_config_from_yaml_overrides_defaults(tmp_path, field: str, expecte
     config_path = tmp_path / "config.yaml"
     with open(config_path, "w") as f:
         f.write(yaml_config)
-    train_config = TrainConfig.from_yaml(config_path)
-    assert getattr(train_config, field) == expected
+    config = Config.from_yaml(config_path)
+    assert getattr(config, field) == expected

@@ -16,7 +16,7 @@ from attention_lab.data.tokenize import tokenize
 from attention_lab.data.vocab import PAD, Vocab
 from attention_lab.models import build_model
 from attention_lab.models.seq2seq import Seq2Seq
-from attention_lab.training.config import TrainConfig
+from attention_lab.training.config import Config
 from attention_lab.training.loop import evaluate, train_epoch
 
 
@@ -33,16 +33,16 @@ def main():
     parser.add_argument("--config", type=str, help="Path to config file", required=True)
     args = parser.parse_args()
 
-    # 3. Load it into TrainConfig
+    # 3. Load it into Config
     config_path = Path(args.config)
     try:
-        train_config = TrainConfig.from_yaml(config_path)
+        config = Config.from_yaml(config_path)
     except FileNotFoundError:
         logger.error(f"File <{config_path.resolve()}> not found.")
         sys.exit(1)
 
     # 4. Build/Load the vocab, GigawordDataset and only the validation loader
-    vocab_path: Path = Path(train_config.vocab_path) / "vocab.json"
+    vocab_path: Path = Path(config.vocab_path) / "vocab.json"
     gigaword_train = load_gigaword("train")
     if vocab_path.exists():
         logger.info(f"Loading vocab from <{vocab_path.resolve()}>")
@@ -54,14 +54,14 @@ def main():
             tokenize(text) for text in itertools.chain(articles, summaries)
         )
         logger.info("This may take some time.")
-        vocab = Vocab.build(tokenized_data, max_size=train_config.vocab_size)
+        vocab = Vocab.build(tokenized_data, max_size=config.vocab_size)
         vocab_path.parent.mkdir(parents=True, exist_ok=True)
         vocab.save(vocab_path)
 
     val_dataset = GigawordDataset(
         data=load_gigaword("validation"),
         vocab=vocab,
-        max_source_len=train_config.max_source_len,
+        max_source_len=config.max_source_len,
     )
     val_loader = DataLoader(
         val_dataset, batch_size=64, collate_fn=make_collate_fn(pad_id=vocab.stoi[PAD])
@@ -69,7 +69,7 @@ def main():
 
     # 5. Construct the model(encoder, decoder, seq2seq) based on config.variant
     try:
-        seq2seq: Seq2Seq = build_model(vocab=vocab, config=train_config)
+        seq2seq: Seq2Seq = build_model(vocab=vocab, config=config)
     except ValueError as e:
         logger.error(e)
         sys.exit(1)
@@ -85,21 +85,21 @@ def main():
     seq2seq = seq2seq.to(device)
 
     # 7. Construct the optimizer and criterion
-    optimizer = torch.optim.Adam(seq2seq.parameters(), lr=train_config.learning_rate)
+    optimizer = torch.optim.Adam(seq2seq.parameters(), lr=config.learning_rate)
     criterion = nn.CrossEntropyLoss(ignore_index=vocab.stoi[PAD])
 
     # 8. Run the training loop over config.num_epochs
-    Path(train_config.checkpoint_path).mkdir(parents=True, exist_ok=True)
-    for epoch in tqdm(range(train_config.num_epochs), desc="Epochs"):
+    Path(config.checkpoint_path).mkdir(parents=True, exist_ok=True)
+    for epoch in tqdm(range(config.num_epochs), desc="Epochs"):
         # Construct the train dataset and loader
         train_dataset = GigawordDataset(
-            data=gigaword_train.shuffle().select(range(train_config.subset_size)),
+            data=gigaword_train.shuffle().select(range(config.subset_size)),
             vocab=vocab,
-            max_source_len=train_config.max_source_len,
+            max_source_len=config.max_source_len,
         )
         train_loader = DataLoader(
             train_dataset,
-            batch_size=train_config.batch_size,
+            batch_size=config.batch_size,
             shuffle=True,
             collate_fn=make_collate_fn(pad_id=vocab.stoi[PAD]),
         )
@@ -109,8 +109,8 @@ def main():
             dataloader=train_loader,
             optimizer=optimizer,
             criterion=criterion,
-            teacher_forcing_ratio=train_config.teacher_forcing_ratio,
-            clip_norm=train_config.gradient_clip_norm,
+            teacher_forcing_ratio=config.teacher_forcing_ratio,
+            clip_norm=config.gradient_clip_norm,
             device=device,
         )
         eval_loss: float = evaluate(
@@ -122,9 +122,7 @@ def main():
             "train_loss": train_loss,
             "eval_loss": eval_loss,
         }
-        torch.save(
-            checkpoint, Path(train_config.checkpoint_path) / f"epoch_{epoch + 1}.pt"
-        )
+        torch.save(checkpoint, Path(config.checkpoint_path) / f"epoch_{epoch + 1}.pt")
 
 
 if __name__ == "__main__":
