@@ -11,6 +11,7 @@ class Config:
     variant: str = "bahdanau"
     vocab_path: str = "vocab"
     checkpoint_path: str = "checkpoints/bahdanau"
+    heatmap_path: str = "outputs/heatmap"
     embedding_dim: int = 256
     hidden_dim: int = 512
     attention_dim: int = 512
@@ -20,6 +21,7 @@ class Config:
     vocab_size: int = 50_000
     subset_size: int = 300_000
     max_source_len: int = 100
+    max_target_len: int = 20
     learning_rate: float = 0.001
     num_epochs: int = 10
 
