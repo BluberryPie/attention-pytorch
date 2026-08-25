@@ -24,6 +24,7 @@ class Config:
     max_target_len: int = 20
     learning_rate: float = 0.001
     num_epochs: int = 10
+    num_heatmap_samples: int = 5
 
     @classmethod
     def from_yaml(cls, path: Path) -> Config:
